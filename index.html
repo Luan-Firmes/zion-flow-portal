@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZION FLOW - Conectar WhatsApp</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #0a0a0f;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .container {
+    background: #13131a;
+    border: 1px solid #5b6af733;
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 0 40px #5b6af722;
+  }
+  .logo {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .logo h1 {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: 4px;
+    color: #5b6af7;
+    text-shadow: 0 0 20px #5b6af755;
+  }
+  .logo p {
+    font-size: 12px;
+    color: #666;
+    letter-spacing: 2px;
+    margin-top: 4px;
+  }
+  .form-group {
+    margin-bottom: 20px;
+  }
+  label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  input {
+    width: 100%;
+    background: #1e1e2e;
+    border: 1px solid #5b6af733;
+    border-radius: 8px;
+    padding: 12px 16px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+    transition: border 0.3s;
+  }
+  input:focus { border-color: #5b6af7; }
+  input::placeholder { color: #444; }
+  .btn-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .btn {
+    padding: 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+  }
+  .btn-qr {
+    background: linear-gradient(135deg, #5b6af7, #7c8ef7);
+    color: #fff;
+  }
+  .btn-code {
+    background: transparent;
+    border: 1px solid #5b6af7;
+    color: #5b6af7;
+  }
+  .btn:hover { opacity: 0.85; transform: translateY(-1px); }
+  #result {
+    margin-top: 24px;
+    display: none;
+    text-align: center;
+  }
+  #qrcode img {
+    width: 200px;
+    height: 200px;
+    border-radius: 8px;
+    border: 2px solid #5b6af7;
+    margin: 0 auto;
+    display: block;
+  }
+  #pairingCode {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: 8px;
+    color: #5b6af7;
+    text-shadow: 0 0 20px #5b6af755;
+    margin-top: 16px;
+  }
+  .status-msg {
+    font-size: 13px;
+    color: #888;
+    margin-top: 12px;
+  }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #5b6af733;
+    border-top: 3px solid #5b6af7;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 16px auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .success { color: #4ade80; }
+  .error { color: #f87171; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">
+    <h1>ZION FLOW</h1>
+    <p>CONECTAR WHATSAPP</p>
+  </div>
+  <div class="form-group">
+    <label>Instância</label>
+    <input type="text" id="instanceName" placeholder="Nome da instância">
+  </div>
+  <div class="form-group">
+    <label>Telefone (para código de pareamento)</label>
+    <input type="text" id="phoneNumber" placeholder="5511999999999">
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-qr" onclick="connectQR()">QR Code</button>
+    <button class="btn btn-code" onclick="connectCode()">Código</button>
+  </div>
+  <div id="result">
+    <div id="loading" style="display:none"><div class="spinner"></div></div>
+    <div id="qrcode"></div>
+    <div id="pairingCode"></div>
+    <p class="status-msg" id="statusMsg"></p>
+  </div>
+</div>
+<script>
+  const WEBHOOK = 'https://zion-flow-01-connect.ob2rl3.easypanel.host';
+
+  function getInstanceName() {
+    return document.getElementById('instanceName').value.trim();
+  }
+
+  async function connectQR() {
+    const instance = getInstanceName();
+    if (!instance) { alert('Informe o nome da instância'); return; }
+    showLoading();
+    try {
+      const res = await fetch(`${WEBHOOK}/webhook/qr_uazapi`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ instance })
+      });
+      const data = await res.json();
+      hideLoading();
+      if (data.qrcode || data.base64) {
+        const base64 = data.qrcode || data.base64;
+        document.getElementById('qrcode').innerHTML = `<img src="${base64}" alt="QR Code">`;
+        document.getElementById('pairingCode').innerText = '';
+        document.getElementById('statusMsg').innerText = 'Escaneie o QR Code no WhatsApp';
+      } else if (data.status === 'connected' || data.status === 'open') {
+        showSuccess('WhatsApp ja esta conectado!');
+      } else {
+        showError('Erro ao gerar QR Code. Tente novamente.');
+      }
+    } catch(e) {
+      hideLoading();
+      showError('Erro de conexao com o servidor.');
+    }
+    document.getElementById('result').style.display = 'block';
+  }
+
+  async function connectCode() {
+    const instance = getInstanceName();
+    const phone = document.getElementById('phoneNumber').value.trim();
+    if (!instance) { alert('Informe o nome da instância'); return; }
+    if (!phone) { alert('Informe o número de telefone para o código de pareamento'); return; }
+    showLoading();
+    try {
+      const res = await fetch(`${WEBHOOK}/webhook/pairing_uazapi`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ instance, phone })
+      });
+      const data = await res.json();
+      hideLoading();
+      if (data.code) {
+        document.getElementById('qrcode').innerHTML = '';
+        document.getElementById('pairingCode').innerText = data.code;
+        document.getElementById('statusMsg').innerText = 'Digite este código no WhatsApp > Dispositivos vinculados';
+      } else if (data.status === 'connected' || data.status === 'open') {
+        showSuccess('WhatsApp ja esta conectado!');
+      } else {
+        showError('Erro ao gerar código. Tente novamente.');
+      }
+    } catch(e) {
+      hideLoading();
+      showError('Erro de conexao com o servidor.');
+    }
+    document.getElementById('result').style.display = 'block';
+  }
+
+  function showLoading() {
+    document.getElementById('result').style.display = 'block';
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('qrcode').innerHTML = '';
+    document.getElementById('pairingCode').innerText = '';
+    document.getElementById('statusMsg').innerText = '';
+  }
+  function hideLoading() {
+    document.getElementById('loading').style.display = 'none';
+  }
+  function showSuccess(msg) {
+    document.getElementById('statusMsg').className = 'status-msg success';
+    document.getElementById('statusMsg').innerText = msg;
+  }
+  function showError(msg) {
+    document.getElementById('statusMsg').className = 'status-msg error';
+    document.getElementById('statusMsg').innerText = msg;
+  }
+
+  // Preenche instância automaticamente via URL ?instance=...
+  const urlParams = new URLSearchParams(window.location.search);
+  const instanceParam = urlParams.get('instance');
+  if (instanceParam) {
+    document.getElementById('instanceName').value = instanceParam;
+  }
+</script>
+</body>
+</html>
